@@ -242,7 +242,7 @@ A: 部分图片可能有防盗链保护,建议在导出HTML格式时保留图片
 
 ## 👨‍💻 作者
 
-- **Your Name** - [GitHub](https://github.com/your-username)
+- **Your Name** - [GitHub](https://github.com/zhulin025)
 
 ## 🙏 致谢
 
@@ -252,8 +252,8 @@ A: 部分图片可能有防盗链保护,建议在导出HTML格式时保留图片
 
 ## 📮 联系方式
 
-- GitHub Issues: [提交问题](https://github.com/your-repo/issues)
-- Email: your-email@example.com
+- GitHub Issues: [提交问题]([(https://github.com/zhulin025/xiaohongshu-exporter/issues])
+- Email: zhulin025@gmail.com
 
 ---
 
