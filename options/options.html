@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书收藏夹导出助手 - 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚙️ 小红书收藏夹导出助手</h1>
+      <p class="subtitle">配置和高级设置</p>
+    </header>
+
+    <main>
+      <section class="section">
+        <h2>🚀 飞书配置</h2>
+        <div class="form-group">
+          <label for="feishuAppId">App ID</label>
+          <input type="text" id="feishuAppId" placeholder="请输入飞书应用的App ID">
+          <small>在飞书开放平台创建应用后获取</small>
+        </div>
+        <div class="form-group">
+          <label for="feishuAppSecret">App Secret</label>
+          <input type="password" id="feishuAppSecret" placeholder="请输入飞书应用的App Secret">
+          <small>在飞书开放平台创建应用后获取</small>
+        </div>
+        <div class="form-actions">
+          <button id="testFeishu" class="btn btn-secondary">测试连接</button>
+          <a href="https://open.feishu.cn/app" target="_blank" class="btn-link">前往飞书开放平台 →</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>📝 Notion配置</h2>
+        <div class="form-group">
+          <label for="notionToken">Integration Token</label>
+          <input type="password" id="notionToken" placeholder="请输入Notion Integration Token">
+          <small>在Notion开发者门户创建集成后获取</small>
+        </div>
+        <div class="form-group">
+          <label for="notionDatabaseId">数据库ID (可选)</label>
+          <input type="text" id="notionDatabaseId" placeholder="如不填写,将自动创建新数据库">
+          <small>指定要导出到的Notion数据库ID</small>
+        </div>
+        <div class="form-actions">
+          <button id="testNotion" class="btn btn-secondary">测试连接</button>
+          <a href="https://www.notion.so/my-integrations" target="_blank" class="btn-link">前往Notion集成设置 →</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>📁 本地导出设置</h2>
+        <div class="form-group">
+          <label>默认导出格式</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="defaultFormat" value="json" checked>
+              <span>JSON</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="defaultFormat" value="csv">
+              <span>CSV</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="defaultFormat" value="html">
+              <span>HTML</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="defaultFormat" value="markdown">
+              <span>Markdown</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoDownloadImages">
+            <span>自动下载图片</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>🔧 高级设置</h2>
+        <div class="form-group">
+          <label for="maxConcurrent">最大并发请求数</label>
+          <input type="number" id="maxConcurrent" value="3" min="1" max="10">
+          <small>同时进行的API请求数量,过高可能触发限流</small>
+        </div>
+        <div class="form-group">
+          <label for="retryTimes">失败重试次数</label>
+          <input type="number" id="retryTimes" value="3" min="0" max="10">
+          <small>API请求失败时的重试次数</small>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableDebug">
+            <span>启用调试模式</span>
+          </label>
+          <small>在控制台输出详细的调试信息</small>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>⏰ 自动导出设置</h2>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableAutoExport">
+            <span>启用自动定时导出</span>
+          </label>
+          <small>每周自动导出新增收藏到本地</small>
+        </div>
+        <div id="autoExportOptions" style="display: none;">
+          <div class="form-group">
+            <label for="autoExportDay">导出时间</label>
+            <select id="autoExportDay">
+              <option value="1">每周一</option>
+              <option value="2">每周二</option>
+              <option value="3">每周三</option>
+              <option value="4">每周四</option>
+              <option value="5">每周五</option>
+              <option value="6">每周六</option>
+              <option value="0">每周日</option>
+            </select>
+            <select id="autoExportHour">
+              <option value="0">00:00</option>
+              <option value="1">01:00</option>
+              <option value="2">02:00</option>
+              <option value="3">03:00</option>
+              <option value="4">04:00</option>
+              <option value="5">05:00</option>
+              <option value="6">06:00</option>
+              <option value="7">07:00</option>
+              <option value="8">08:00</option>
+              <option value="9">09:00</option>
+              <option value="10" selected>10:00</option>
+              <option value="11">11:00</option>
+              <option value="12">12:00</option>
+              <option value="13">13:00</option>
+              <option value="14">14:00</option>
+              <option value="15">15:00</option>
+              <option value="16">16:00</option>
+              <option value="17">17:00</option>
+              <option value="18">18:00</option>
+              <option value="19">19:00</option>
+              <option value="20">20:00</option>
+              <option value="21">21:00</option>
+              <option value="22">22:00</option>
+              <option value="23">23:00</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="autoExportFormat">导出格式</label>
+            <select id="autoExportFormat">
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+              <option value="html">HTML</option>
+              <option value="markdown">Markdown</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="autoExportAppendMode" checked>
+              <span>追加到上次文件</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="autoExportOnlyNew" checked>
+              <span>只导出新增收藏</span>
+            </label>
+          </div>
+          <div class="alert alert-info">
+            <strong>提示:</strong> 自动导出需要保持小红书登录状态。如果登录过期,自动导出将失败。
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>📊 数据管理</h2>
+        <div class="form-actions">
+          <button id="clearCache" class="btn btn-warning">清除缓存数据</button>
+          <button id="exportSettings" class="btn btn-secondary">导出配置</button>
+          <button id="importSettings" class="btn btn-secondary">导入配置</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display: none;">
+      </section>
+
+      <section class="section">
+        <h2>ℹ️ 关于</h2>
+        <div class="about-info">
+          <p><strong>版本:</strong> 1.6.3</p>
+          <p><strong>作者:</strong> Leo Zhu</p>
+          <p><strong>GitHub:</strong> <a href="https://github.com/zhulin025/" target="_blank">github.com/zhulin025</a></p>
+          <p><strong>反馈:</strong> <a href="mailto:zhulin025@gmail.com">zhulin025@gmail.com</a></p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <button id="saveBtn" class="btn btn-primary">💾 保存设置</button>
+      <div id="saveStatus" class="save-status"></div>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

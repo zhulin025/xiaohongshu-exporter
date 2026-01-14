@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const sizes = [16, 32, 48, 128];
+sizes.forEach(size => {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  
+  // 背景渐变
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, '#ff2442');
+  gradient.addColorStop(1, '#ff6b6b');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  
+  // 绘制书本图标
+  ctx.fillStyle = 'white';
+  const padding = size * 0.2;
+  const bookWidth = size - padding * 2;
+  const bookHeight = bookWidth * 0.8;
+  const x = padding;
+  const y = (size - bookHeight) / 2;
+  
+  ctx.fillRect(x, y, bookWidth, bookHeight);
+  ctx.fillStyle = '#ff2442';
+  ctx.fillRect(x + bookWidth * 0.1, y + bookHeight * 0.3, bookWidth * 0.8, bookHeight * 0.1);
+  ctx.fillRect(x + bookWidth * 0.1, y + bookHeight * 0.5, bookWidth * 0.8, bookHeight * 0.1);
+  
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icon${size}.png`;
+    a.click();
+  });
+});
+</script>
+</body>
+</html>

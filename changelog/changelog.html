@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>版本更新记录</title>
+  <link rel="stylesheet" href="changelog.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 版本更新记录</h1>
+      <p class="subtitle">小红书收藏夹导出助手</p>
+    </header>
+
+    <main>
+      <!-- v1.3.0 -->
+      <section class="version-card latest">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.3.0</span>
+            <span class="version-badge latest-badge">最新版本</span>
+          </div>
+          <span class="version-date">2024-01-13 13:35</span>
+        </div>
+        <div class="version-content">
+          <h3>🎉 重大更新</h3>
+          
+          <div class="feature-group">
+            <h4>📎 文件追加功能</h4>
+            <ul>
+              <li>支持追加到上次导出的文件,而不是每次新建</li>
+              <li>自动合并数据并去重</li>
+              <li>保持文件名一致,便于管理</li>
+              <li>适用于所有导出格式(JSON/CSV/HTML/Markdown)</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📊 历史记录可视化</h4>
+            <ul>
+              <li>全新的历史记录页面</li>
+              <li>统计概览:总导出次数、总收藏数、上次导出时间</li>
+              <li>导出趋势图:折线图展示导出数量变化</li>
+              <li>格式分布图:饼图展示各格式使用情况</li>
+              <li>目标分布图:统计本地/飞书/Notion导出比例</li>
+              <li>每周统计图:柱状图展示每周导出活动</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📈 导出统计分析</h4>
+            <ul>
+              <li>平均每次导出数量统计</li>
+              <li>导出记录时间轴展示</li>
+              <li>格式和目标使用频率分析</li>
+              <li>支持清除历史记录</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>⏰ 自动定时导出</h4>
+            <ul>
+              <li>在设置页面配置自动导出</li>
+              <li>支持选择每周几和具体时间</li>
+              <li>支持选择导出格式</li>
+              <li>支持"只导出新增"和"追加到上次文件"</li>
+              <li>自动导出失败时会记录日志</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📋 版本更新记录页</h4>
+            <ul>
+              <li>查看所有历史版本更新内容</li>
+              <li>了解每个版本的新功能和改进</li>
+              <li>快速定位功能发布时间</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>🎨 界面优化</h4>
+            <ul>
+              <li>popup界面添加"导出历史"按钮</li>
+              <li>本地导出选项添加"追加到上次文件"复选框</li>
+              <li>设置页面新增"自动导出设置"区域</li>
+              <li>历史页面采用卡片式布局,美观易用</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- v1.2.0 -->
+      <section class="version-card">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.2.0</span>
+          </div>
+          <span class="version-date">2024-01-13 11:20</span>
+        </div>
+        <div class="version-content">
+          <h3>🎉 重大更新</h3>
+          
+          <div class="feature-group">
+            <h4>💾 记忆功能</h4>
+            <ul>
+              <li>自动记录每次导出的历史</li>
+              <li>保存导出时间、数量、收藏ID列表</li>
+              <li>支持断点续传</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>🔍 新增检测</h4>
+            <ul>
+              <li>自动检测未导出的新收藏</li>
+              <li>显示新增数量和上次导出时间</li>
+              <li>醒目的新增提示区域</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📊 增量导出</h4>
+            <ul>
+              <li>支持"只采集新增"模式</li>
+              <li>支持"只导出新增"模式</li>
+              <li>自动过滤已导出的收藏</li>
+              <li>一键导出新增按钮</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>💡 智能提示</h4>
+            <ul>
+              <li>首次使用欢迎提示</li>
+              <li>有新增时醒目显示</li>
+              <li>无新增时显示"已是最新"</li>
+              <li>建议采集范围自动设置</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- v1.1.2 -->
+      <section class="version-card">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.1.2</span>
+          </div>
+          <span class="version-date">2024-01-13 10:45</span>
+        </div>
+        <div class="version-content">
+          <h3>🐛 Bug修复</h3>
+          
+          <div class="feature-group">
+            <ul>
+              <li>修复本地导出功能报错问题</li>
+              <li>修复Service Worker环境不支持URL.createObjectURL的问题</li>
+              <li>改用data URL方式实现文件下载</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- v1.1.1 -->
+      <section class="version-card">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.1.1</span>
+          </div>
+          <span class="version-date">2024-01-13 10:30</span>
+        </div>
+        <div class="version-content">
+          <h3>🐛 Bug修复</h3>
+          
+          <div class="feature-group">
+            <ul>
+              <li>修复导出功能报错问题</li>
+              <li>修复background.js消息监听器未正确响应的问题</li>
+              <li>添加对exportLocal/exportFeishu/exportNotion消息的支持</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- v1.1.0 -->
+      <section class="version-card">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.1.0</span>
+          </div>
+          <span class="version-date">2024-01-13 10:00</span>
+        </div>
+        <div class="version-content">
+          <h3>✨ 新增功能</h3>
+          
+          <div class="feature-group">
+            <h4>📏 采集范围设置</h4>
+            <ul>
+              <li>支持指定采集特定范围的收藏</li>
+              <li>例如从第100条到第200条</li>
+              <li>适合分批采集大量收藏</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>⏸️ 暂停采集功能</h4>
+            <ul>
+              <li>采集过程中可随时暂停</li>
+              <li>已采集的数据自动保存</li>
+              <li>可以直接导出部分数据</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- v1.0.0 -->
+      <section class="version-card">
+        <div class="version-header">
+          <div class="version-info">
+            <span class="version-number">v1.0.0</span>
+            <span class="version-badge">初始版本</span>
+          </div>
+          <span class="version-date">2024-01-13 09:00</span>
+        </div>
+        <div class="version-content">
+          <h3>🎉 首次发布</h3>
+          
+          <div class="feature-group">
+            <h4>✨ 核心功能</h4>
+            <ul>
+              <li>采集小红书收藏夹数据</li>
+              <li>自动滚动加载所有收藏</li>
+              <li>智能解析页面,提取标题、链接、作者等信息</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📁 本地导出</h4>
+            <ul>
+              <li>JSON格式:完整的结构化数据</li>
+              <li>CSV格式:可用Excel打开的表格数据</li>
+              <li>HTML格式:美观的网页展示</li>
+              <li>Markdown格式:适合笔记软件的文档格式</li>
+              <li>可选批量下载封面图片</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>🚀 飞书集成</h4>
+            <ul>
+              <li>自动创建多维表格</li>
+              <li>批量导入收藏数据</li>
+              <li>支持OAuth 2.0认证</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>📝 Notion集成</h4>
+            <ul>
+              <li>自动创建数据库或在指定数据库添加页面</li>
+              <li>每条收藏作为一个页面</li>
+              <li>支持Integration Token认证</li>
+            </ul>
+          </div>
+
+          <div class="feature-group">
+            <h4>⚙️ 高级功能</h4>
+            <ul>
+              <li>完整的配置管理界面</li>
+              <li>API连接测试</li>
+              <li>配置导入导出</li>
+              <li>性能参数调整</li>
+              <li>调试模式</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <button id="backBtn" class="btn btn-primary">返回</button>
+    </footer>
+  </div>
+
+  <script src="changelog.js"></script>
+</body>
+</html>

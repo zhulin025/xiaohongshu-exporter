@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书收藏夹导出助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📚 小红书收藏夹导出</h1>
+    </header>
+
+    <section class="status-section">
+      <div class="status-item">
+        <span class="label">当前状态:</span>
+        <span id="status" class="value">未采集</span>
+      </div>
+      <div class="status-item">
+        <span class="label">收藏数量:</span>
+        <span id="count" class="value">--</span>
+      </div>
+    </section>
+
+    <!-- 新增提示区域 -->
+    <section id="newItemsAlert" class="alert-section" style="display: none;">
+      <div class="alert alert-info">
+        <span class="alert-icon">🆕</span>
+        <div class="alert-content">
+          <div class="alert-title">检测到 <strong id="newItemsCount">0</strong> 条新收藏未导出</div>
+          <div class="alert-subtitle" id="lastExportInfo">上次导出: --</div>
+        </div>
+        <button id="exportNewBtn" class="btn btn-sm btn-success">
+          <span class="btn-icon">⬇️</span>
+          导出新增
+        </button>
+      </div>
+    </section>
+
+    <!-- 未完成任务提示区域 -->
+    <section id="unfinishedTaskAlert" class="alert-section" style="display: none;">
+      <div class="alert alert-warning">
+        <span class="alert-icon">🔄</span>
+        <div class="alert-content">
+          <div class="alert-title">检测到未完成的采集任务</div>
+          <div class="alert-subtitle">
+            <span>已采集: <strong id="resumeCollectedCount">0</strong>条</span>
+            <span class="separator">|</span>
+            <span>上次中断: <strong id="resumeInterruptedTime">--</strong></span>
+          </div>
+        </div>
+        <div class="alert-actions">
+          <button id="resumeCollectBtn" class="btn btn-sm btn-primary">
+            <span class="btn-icon">▶️</span>
+            继续采集
+          </button>
+          <button id="viewResumeDataBtn" class="btn btn-sm btn-secondary">
+            <span class="btn-icon">👁️</span>
+            查看数据
+          </button>
+          <button id="clearProgressBtn" class="btn btn-sm btn-danger">
+            <span class="btn-icon">❌</span>
+            重新开始
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 首次使用提示 -->
+    <section id="firstTimeAlert" class="alert-section" style="display: none;">
+      <div class="alert alert-welcome">
+        <span class="alert-icon">👋</span>
+        <div class="alert-content">
+          <div class="alert-title">欢迎使用小红书收藏夹导出助手</div>
+          <div class="alert-subtitle">请先采集收藏夹数据,然后选择导出目标</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="action-section">
+      <!-- 采集模式选择 -->
+      <div class="collect-mode">
+        <label class="radio-label">
+          <input type="radio" name="collectMode" value="all" checked>
+          <span>📚 采集全部</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="collectMode" value="new">
+          <span>🆕 只采集新增</span>
+        </label>
+      </div>
+      
+      <!-- 范围设置 -->
+      <div class="range-settings">
+        <label class="checkbox-label">
+          <input type="checkbox" id="enableRange">
+          <span>指定采集范围</span>
+        </label>
+        <div id="rangeInputs" class="range-inputs" style="display: none;">
+          <div class="range-input-group">
+            <label>从第</label>
+            <input type="number" id="startIndex" min="1" value="1" placeholder="1">
+            <label>条</label>
+          </div>
+          <div class="range-input-group">
+            <label>到第</label>
+            <input type="number" id="endIndex" min="1" value="100" placeholder="100">
+            <label>条</label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 采集按钮组 -->
+      <div class="button-group">
+        <button id="collectBtn" class="btn btn-primary">
+          <span class="btn-icon">🔍</span>
+          开始采集收藏夹
+        </button>
+        <button id="pauseBtn" class="btn btn-warning" style="display: none;">
+          <span class="btn-icon">⏸</span>
+          暂停采集
+        </button>
+      </div>
+      <div id="collectTip" class="tip">请先打开小红书收藏夹页面</div>
+    </section>
+
+    <section class="export-section">
+      <h3>导出设置</h3>
+      
+      <!-- 导出模式 -->
+      <div class="export-mode">
+        <label class="radio-label">
+          <input type="radio" name="exportMode" value="all" checked>
+          <span>📚 导出全部</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="exportMode" value="new">
+          <span>🆕 只导出新增</span>
+        </label>
+      </div>
+      
+      <h4>导出目标</h4>
+      <div class="checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="exportLocal" checked>
+          <span>📁 本地文件</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="exportFeishu">
+          <span>🚀 飞书多维表格</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="exportNotion">
+          <span>📝 Notion数据库</span>
+        </label>
+      </div>
+
+      <div id="localOptions" class="export-options">
+        <h4>本地导出格式</h4>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="format" value="json" checked>
+            <span>JSON</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="format" value="csv">
+            <span>CSV</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="format" value="html">
+            <span>HTML</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="format" value="markdown">
+            <span>Markdown</span>
+          </label>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="downloadImages">
+          <span>下载封面图片</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="appendMode">
+          <span>📎 追加到上次文件</span>
+        </label>
+      </div>
+
+      <div id="feishuOptions" class="export-options" style="display: none;">
+        <h4>飞书配置</h4>
+        <button id="configFeishu" class="btn btn-secondary">配置飞书API</button>
+        <div id="feishuStatus" class="config-status"></div>
+      </div>
+
+      <div id="notionOptions" class="export-options" style="display: none;">
+        <h4>Notion配置</h4>
+        <button id="configNotion" class="btn btn-secondary">配置Notion API</button>
+        <div id="notionStatus" class="config-status"></div>
+      </div>
+    </section>
+
+    <section class="action-section">
+      <button id="exportBtn" class="btn btn-success" disabled>
+        <span class="btn-icon">📤</span>
+        开始导出
+      </button>
+    </section>
+
+    <section class="progress-section" style="display: none;">
+      <div class="progress-header">
+        <div class="progress-title">
+          <span id="progressStatus">采集中...</span>
+          <span id="progressPercent" class="progress-percent">0%</span>
+        </div>
+        <div class="progress-stats">
+          <span class="stat-item">
+            <span class="stat-label">已采集:</span>
+            <span id="progressCurrent" class="stat-value">0</span>
+          </span>
+          <span class="stat-separator">/</span>
+          <span class="stat-item">
+            <span class="stat-label">总计:</span>
+            <span id="progressTotal" class="stat-value">--</span>
+          </span>
+        </div>
+      </div>
+      
+      <div class="progress-bar-container">
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill">
+            <span class="progress-bar-text" id="progressBarText">0%</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="progress-details">
+        <div class="detail-row">
+          <span class="detail-label">采集速度:</span>
+          <span id="collectSpeed" class="detail-value">-- 条/秒</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">已用时间:</span>
+          <span id="elapsedTime" class="detail-value">00:00</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">预计剩余:</span>
+          <span id="remainingTime" class="detail-value">--</span>
+        </div>
+      </div>
+      
+      <div id="progressText" class="progress-text">正在加载收藏夹...</div>
+    </section>
+
+    <footer>
+      <button id="historyBtn" class="btn-link">📊 导出历史</button>
+      <button id="changelogBtn" class="btn-link">📝 更新记录</button>
+      <button id="settingsBtn" class="btn-link">⚙️ 高级设置</button>
+      <button id="helpBtn" class="btn-link">❓ 使用帮助</button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,827 @@
+// Popup逻辑控制
+// 导入历史记录管理模块
+class ExportHistory {
+  constructor() {
+    this.storageKey = 'exportHistory';
+  }
+
+  async getHistory() {
+    const result = await chrome.storage.local.get([this.storageKey]);
+    return result[this.storageKey] || {
+      lastExportTime: null,
+      lastExportCount: 0,
+      lastExportedIds: [],
+      lastNoteId: null,
+      lastNoteIndex: 0,
+      exportRecords: []
+    };
+  }
+
+  async saveHistory(history) {
+    await chrome.storage.local.set({ [this.storageKey]: history });
+  }
+
+  async addExportRecord(data, format, target) {
+    const history = await this.getHistory();
+    
+    const record = {
+      timestamp: new Date().toISOString(),
+      count: data.length,
+      format: format,
+      target: target,
+      lastNoteId: data.length > 0 ? data[data.length - 1].id : null,
+      lastNoteIndex: data.length > 0 ? data[data.length - 1].index : 0
+    };
+
+    history.exportRecords.push(record);
+    history.lastExportTime = record.timestamp;
+    history.lastExportCount = data.length;
+    history.lastExportedIds = data.map(item => item.id);
+    history.lastNoteId = record.lastNoteId;
+    history.lastNoteIndex = record.lastNoteIndex;
+
+    if (history.exportRecords.length > 10) {
+      history.exportRecords = history.exportRecords.slice(-10);
+    }
+
+    await this.saveHistory(history);
+    return record;
+  }
+
+  async detectNewItems(currentItems) {
+    const history = await this.getHistory();
+    
+    if (!history.lastExportTime || history.lastExportedIds.length === 0) {
+      return {
+        hasNew: true,
+        newCount: currentItems.length,
+        newItems: currentItems,
+        isFirstTime: true
+      };
+    }
+
+    const exportedIds = new Set(history.lastExportedIds);
+    const newItems = currentItems.filter(item => !exportedIds.has(item.id));
+
+    return {
+      hasNew: newItems.length > 0,
+      newCount: newItems.length,
+      newItems: newItems,
+      isFirstTime: false,
+      lastExportTime: history.lastExportTime,
+      lastExportCount: history.lastExportCount
+    };
+  }
+
+  async markAsExported(items) {
+    const history = await this.getHistory();
+    const newIds = items.map(item => item.id);
+    
+    const allIds = new Set([...history.lastExportedIds, ...newIds]);
+    history.lastExportedIds = Array.from(allIds);
+    
+    if (items.length > 0) {
+      const lastItem = items[items.length - 1];
+      history.lastNoteId = lastItem.id;
+      history.lastNoteIndex = lastItem.index || 0;
+    }
+    
+    history.lastExportTime = new Date().toISOString();
+    history.lastExportCount = history.lastExportedIds.length;
+
+    await this.saveHistory(history);
+  }
+
+  async getSuggestedRange() {
+    const history = await this.getHistory();
+    
+    if (!history.lastNoteIndex || history.lastNoteIndex === 0) {
+      return null;
+    }
+
+    return {
+      startIndex: history.lastNoteIndex + 1,
+      endIndex: -1,
+      message: `建议从第 ${history.lastNoteIndex + 1} 条开始采集新增内容`
+    };
+  }
+}
+
+const exportHistory = new ExportHistory();
+
+class PopupController {
+  constructor() {
+    this.collectedData = null;
+    this.isCollecting = false;
+    this.newItemsDetection = null;
+    this.init();
+  }
+
+  async init() {
+    await this.loadState();
+    await this.checkCurrentPage();
+    await this.checkUnfinishedTask();
+    await this.checkNewItems();
+    this.bindEvents();
+  }
+
+  bindEvents() {
+    // 采集按钮
+    document.getElementById('collectBtn').addEventListener('click', () => this.handleCollect());
+    
+    // 暂停按钮
+    document.getElementById('pauseBtn').addEventListener('click', () => this.handlePause());
+    
+    // 导出新增按钮
+    document.getElementById('exportNewBtn').addEventListener('click', () => this.handleExportNew());
+    
+    // 继续采集按钮
+    document.getElementById('resumeCollectBtn').addEventListener('click', () => this.handleResumeCollect());
+    
+    // 查看恢复数据按钮
+    document.getElementById('viewResumeDataBtn').addEventListener('click', () => this.handleViewResumeData());
+    
+    // 清除进度按钮
+    document.getElementById('clearProgressBtn').addEventListener('click', () => this.handleClearProgress());
+    
+    // 采集模式切换
+    document.querySelectorAll('input[name="collectMode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => this.handleCollectModeChange(e.target.value));
+    });
+    
+    // 导出模式切换
+    document.querySelectorAll('input[name="exportMode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => this.handleExportModeChange(e.target.value));
+    });
+    
+    // 范围设置复选框
+    document.getElementById('enableRange').addEventListener('change', (e) => {
+      document.getElementById('rangeInputs').style.display = e.target.checked ? 'flex' : 'none';
+    });
+    
+    // 导出按钮
+    document.getElementById('exportBtn').addEventListener('click', () => this.handleExport());
+    
+    // 导出目标复选框
+    document.getElementById('exportLocal').addEventListener('change', (e) => {
+      document.getElementById('localOptions').style.display = e.target.checked ? 'block' : 'none';
+    });
+    
+    document.getElementById('exportFeishu').addEventListener('change', (e) => {
+      document.getElementById('feishuOptions').style.display = e.target.checked ? 'block' : 'none';
+    });
+    
+    document.getElementById('exportNotion').addEventListener('change', (e) => {
+      document.getElementById('notionOptions').style.display = e.target.checked ? 'block' : 'none';
+    });
+    
+    // 配置按钮
+    document.getElementById('configFeishu').addEventListener('click', () => this.configFeishu());
+    document.getElementById('configNotion').addEventListener('click', () => this.configNotion());
+    
+    // 历史、更新记录、设置和帮助按钮
+    document.getElementById('historyBtn').addEventListener('click', () => this.openHistory());
+    document.getElementById('changelogBtn').addEventListener('click', () => this.openChangelog());
+    document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+    document.getElementById('helpBtn').addEventListener('click', () => this.showHelp());
+  }
+
+  async loadState() {
+    const result = await chrome.storage.local.get(['collectedData', 'feishuConfig', 'notionConfig']);
+    
+    if (result.collectedData) {
+      this.collectedData = result.collectedData;
+      this.updateStatus('已采集', result.collectedData.length);
+      document.getElementById('exportBtn').disabled = false;
+    }
+    
+    if (result.feishuConfig && result.feishuConfig.appId) {
+      document.getElementById('feishuStatus').textContent = '✓ 已配置';
+      document.getElementById('feishuStatus').style.color = '#28a745';
+    }
+    
+    if (result.notionConfig && result.notionConfig.token) {
+      document.getElementById('notionStatus').textContent = '✓ 已配置';
+      document.getElementById('notionStatus').style.color = '#28a745';
+    }
+  }
+
+  async checkCurrentPage() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (tab && tab.url && tab.url.includes('xiaohongshu.com')) {
+      document.getElementById('collectTip').textContent = '✓ 检测到小红书页面';
+      document.getElementById('collectTip').style.color = '#28a745';
+      document.getElementById('collectBtn').disabled = false;
+    } else {
+      document.getElementById('collectTip').textContent = '⚠ 请先打开小红书收藏夹页面';
+      document.getElementById('collectTip').style.color = '#ffc107';
+      document.getElementById('collectBtn').disabled = true;
+    }
+  }
+
+  async checkNewItems() {
+    if (!this.collectedData || this.collectedData.length === 0) {
+      const history = await exportHistory.getHistory();
+      if (!history.lastExportTime) {
+        document.getElementById('firstTimeAlert').style.display = 'block';
+      }
+      return;
+    }
+
+    this.newItemsDetection = await exportHistory.detectNewItems(this.collectedData);
+    
+    if (this.newItemsDetection.isFirstTime) {
+      document.getElementById('firstTimeAlert').style.display = 'block';
+    } else if (this.newItemsDetection.hasNew) {
+      document.getElementById('newItemsCount').textContent = this.newItemsDetection.newCount;
+      const lastTime = new Date(this.newItemsDetection.lastExportTime).toLocaleString('zh-CN');
+      document.getElementById('lastExportInfo').textContent = `上次导出: ${lastTime} (${this.newItemsDetection.lastExportCount}条)`;
+      document.getElementById('newItemsAlert').style.display = 'block';
+      
+      // 自动选中"只导出新增"
+      document.querySelector('input[name="exportMode"][value="new"]').checked = true;
+    } else {
+      // 没有新增,显示已是最新
+      document.getElementById('collectTip').textContent = '✓ 已是最新,无新增收藏';
+      document.getElementById('collectTip').style.color = '#28a745';
+    }
+  }
+
+  handleCollectModeChange(mode) {
+    const enableRange = document.getElementById('enableRange');
+    const rangeInputs = document.getElementById('rangeInputs');
+    
+    if (mode === 'new') {
+      exportHistory.getSuggestedRange().then(range => {
+        if (range) {
+          enableRange.checked = true;
+          rangeInputs.style.display = 'flex';
+          document.getElementById('startIndex').value = range.startIndex;
+          document.getElementById('endIndex').value = '';
+          document.getElementById('collectTip').textContent = range.message;
+          document.getElementById('collectTip').style.color = '#007bff';
+        }
+      });
+    } else {
+      enableRange.checked = false;
+      rangeInputs.style.display = 'none';
+    }
+  }
+
+  handleExportModeChange(mode) {
+    // 导出模式变化时的处理
+    if (mode === 'new' && this.newItemsDetection && !this.newItemsDetection.hasNew) {
+      alert('当前没有新增收藏需要导出');
+      document.querySelector('input[name="exportMode"][value="all"]').checked = true;
+    }
+  }
+
+  async handleExportNew() {
+    // 快捷导出新增
+    document.querySelector('input[name="exportMode"][value="new"]').checked = true;
+    await this.handleExport();
+  }
+
+  async handleCollect() {
+    const collectBtn = document.getElementById('collectBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    
+    collectBtn.disabled = true;
+    pauseBtn.style.display = 'block';
+    pauseBtn.disabled = false;
+    
+    const originalText = collectBtn.innerHTML;
+    collectBtn.innerHTML = '<span class="btn-icon">⏳</span> 采集中...';
+    
+    this.isCollecting = true;
+    this.updateStatus('采集中...', '--');
+    this.showProgress(true);
+    this.updateProgress(0, '正在分析页面...');
+    
+    try {
+      const collectMode = document.querySelector('input[name="collectMode"]:checked').value;
+      const enableRange = document.getElementById('enableRange').checked;
+      const options = {};
+      
+      if (collectMode === 'new') {
+        const range = await exportHistory.getSuggestedRange();
+        if (range) {
+          options.startIndex = range.startIndex;
+          options.endIndex = -1;
+          this.updateProgress(10, `准备采集新增收藏(从第${range.startIndex}条开始)...`);
+        }
+      } else if (enableRange) {
+        const startIndex = parseInt(document.getElementById('startIndex').value) || 1;
+        const endIndex = parseInt(document.getElementById('endIndex').value) || -1;
+        
+        if (startIndex < 1) {
+          throw new Error('起始位置必须大于0');
+        }
+        
+        if (endIndex !== -1 && endIndex < startIndex) {
+          throw new Error('结束位置必须大于等于起始位置');
+        }
+        
+        options.startIndex = startIndex;
+        options.endIndex = endIndex;
+        
+        this.updateProgress(10, `准备采集第 ${startIndex} 到第 ${endIndex === -1 ? '全部' : endIndex} 条...`);
+      } else {
+        this.updateProgress(10, '准备采集全部收藏...');
+      }
+      
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'startCollect',
+        options: options
+      });
+      
+      this.isCollecting = false;
+      pauseBtn.style.display = 'none';
+      
+      if (response.success) {
+        this.collectedData = response.data;
+        await chrome.storage.local.set({ collectedData: response.data });
+        
+        this.updateStatus('已采集', response.data.length);
+        this.updateProgress(100, `✓ 采集完成! 共 ${response.data.length} 条`);
+        document.getElementById('exportBtn').disabled = false;
+        
+        // 重新检查新增
+        await this.checkNewItems();
+        
+        if (response.paused) {
+          this.updateProgress(100, `⏸ 已暂停,已采集 ${response.data.length} 条`);
+        }
+      } else {
+        if (response.data && response.data.length > 0) {
+          this.collectedData = response.data;
+          await chrome.storage.local.set({ collectedData: response.data });
+          this.updateStatus('部分采集', response.data.length);
+          document.getElementById('exportBtn').disabled = false;
+          
+          if (response.paused) {
+            this.updateProgress(100, `⏸ 已暂停,已采集 ${response.data.length} 条`);
+          } else {
+            this.updateProgress(100, `⚠ ${response.error},已采集 ${response.data.length} 条`);
+          }
+        } else {
+          this.updateStatus('采集失败', '--');
+          this.updateProgress(0, '✗ ' + response.error);
+        }
+      }
+    } catch (error) {
+      this.isCollecting = false;
+      pauseBtn.style.display = 'none';
+      this.updateStatus('采集失败', '--');
+      this.updateProgress(0, '✗ ' + error.message);
+    } finally {
+      collectBtn.disabled = false;
+      collectBtn.innerHTML = originalText;
+      
+      setTimeout(() => {
+        this.showProgress(false);
+      }, 3000);
+    }
+  }
+
+  async handlePause() {
+    if (!this.isCollecting) {
+      return;
+    }
+    
+    const pauseBtn = document.getElementById('pauseBtn');
+    pauseBtn.disabled = true;
+    pauseBtn.innerHTML = '<span class="btn-icon">⏳</span> 暂停中...';
+    
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'pauseCollect'
+      });
+      
+      if (response.success) {
+        this.collectedData = response.data;
+        await chrome.storage.local.set({ collectedData: response.data });
+        
+        this.updateStatus('已暂停', response.data.length);
+        this.updateProgress(100, `⏸ ${response.message}`);
+        document.getElementById('exportBtn').disabled = false;
+      }
+    } catch (error) {
+      console.error('暂停失败:', error);
+    }
+    
+    this.isCollecting = false;
+    pauseBtn.style.display = 'none';
+  }
+
+  async handleExport() {
+    const exportBtn = document.getElementById('exportBtn');
+    exportBtn.disabled = true;
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<span class="btn-icon">⏳</span> 导出中...';
+    
+    this.showProgress(true);
+    this.updateProgress(0, '准备导出...');
+    
+    try {
+      const exportMode = document.querySelector('input[name="exportMode"]:checked').value;
+      const exportLocal = document.getElementById('exportLocal').checked;
+      const exportFeishu = document.getElementById('exportFeishu').checked;
+      const exportNotion = document.getElementById('exportNotion').checked;
+      
+      if (!exportLocal && !exportFeishu && !exportNotion) {
+        throw new Error('请至少选择一个导出目标');
+      }
+      
+      // 确定要导出的数据
+      let dataToExport = this.collectedData;
+      if (exportMode === 'new' && this.newItemsDetection && this.newItemsDetection.hasNew) {
+        dataToExport = this.newItemsDetection.newItems;
+        this.updateProgress(10, `准备导出 ${dataToExport.length} 条新增收藏...`);
+      }
+      
+      let successCount = 0;
+      let totalCount = 0;
+      
+      if (exportLocal) {
+        totalCount++;
+        this.updateProgress(20, '正在导出到本地...');
+        const format = document.querySelector('input[name="format"]:checked').value;
+        const downloadImages = document.getElementById('downloadImages').checked;
+        const appendMode = document.getElementById('appendMode') ? document.getElementById('appendMode').checked : false;
+        
+        const result = await this.exportToLocal(dataToExport, format, downloadImages, appendMode);
+        if (result.success) {
+          successCount++;
+          await exportHistory.addExportRecord(dataToExport, format, 'local');
+        }
+      }
+      
+      if (exportFeishu) {
+        totalCount++;
+        this.updateProgress(50, '正在导出到飞书...');
+        const result = await this.exportToFeishu(dataToExport);
+        if (result.success) {
+          successCount++;
+          await exportHistory.addExportRecord(dataToExport, 'feishu', 'feishu');
+        }
+      }
+      
+      if (exportNotion) {
+        totalCount++;
+        this.updateProgress(70, '正在导出到Notion...');
+        const result = await this.exportToNotion(dataToExport);
+        if (result.success) {
+          successCount++;
+          await exportHistory.addExportRecord(dataToExport, 'notion', 'notion');
+        }
+      }
+      
+      // 标记为已导出
+      await exportHistory.markAsExported(dataToExport);
+      
+      this.updateProgress(100, `✓ 导出完成! (${successCount}/${totalCount})`);
+      
+      // 重新检查新增
+      await this.checkNewItems();
+      
+      setTimeout(() => {
+        this.showProgress(false);
+      }, 3000);
+    } catch (error) {
+      this.updateProgress(0, '✗ ' + error.message);
+      setTimeout(() => {
+        this.showProgress(false);
+      }, 3000);
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = originalText;
+    }
+  }
+
+  async exportToLocal(data, format, downloadImages, appendMode) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        action: 'exportLocal',
+        data: data,
+        format: format,
+        downloadImages: downloadImages,
+        appendMode: appendMode
+      }, (response) => {
+        resolve(response);
+      });
+    });
+  }
+
+  async exportToFeishu(data) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        action: 'exportFeishu',
+        data: data
+      }, (response) => {
+        resolve(response);
+      });
+    });
+  }
+
+  async exportToNotion(data) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        action: 'exportNotion',
+        data: data
+      }, (response) => {
+        resolve(response);
+      });
+    });
+  }
+
+  updateStatus(status, count) {
+    document.getElementById('status').textContent = status;
+    document.getElementById('count').textContent = count;
+  }
+
+  showProgress(show) {
+    document.querySelector('.progress-section').style.display = show ? 'block' : 'none';
+  }
+
+  updateProgress(percent, text) {
+    // 更新进度条
+    const progressFill = document.getElementById('progressFill');
+    if (progressFill) {
+      progressFill.style.width = percent + '%';
+    }
+    
+    // 更新进度条内的百分比文本
+    const progressBarText = document.getElementById('progressBarText');
+    if (progressBarText) {
+      progressBarText.textContent = percent.toFixed(1) + '%';
+    }
+    
+    // 更新右上角的百分比
+    const progressPercent = document.getElementById('progressPercent');
+    if (progressPercent) {
+      progressPercent.textContent = percent.toFixed(1) + '%';
+    }
+    
+    // 更新进度文本
+    const progressText = document.getElementById('progressText');
+    if (progressText) {
+      progressText.textContent = text;
+    }
+  }
+
+  configFeishu() {
+    chrome.runtime.openOptionsPage();
+  }
+
+  configNotion() {
+    chrome.runtime.openOptionsPage();
+  }
+
+  openHistory() {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('history/history.html')
+    });
+  }
+
+  openChangelog() {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('changelog/changelog.html')
+    });
+  }
+
+  openSettings() {
+    chrome.runtime.openOptionsPage();
+  }
+
+  showHelp() {
+    chrome.tabs.create({
+      url: 'https://github.com/your-repo/xiaohongshu-exporter'
+    });
+  }
+
+  // 检查未完成的采集任务
+  async checkUnfinishedTask() {
+    try {
+      const result = await chrome.storage.local.get('collectionProgress');
+      const progress = result.collectionProgress;
+
+      if (!progress) {
+        return; // 没有未完成任务
+      }
+
+      // 检查状态
+      if (progress.status === 'completed') {
+        return; // 已完成,不显示
+      }
+
+      // 计算中断时长
+      const interruptedMinutes = Math.floor((Date.now() - progress.lastUpdateTime) / 60000);
+      let timeText;
+      if (interruptedMinutes < 1) {
+        timeText = '刚刚';
+      } else if (interruptedMinutes < 60) {
+        timeText = `${interruptedMinutes}分钟前`;
+      } else if (interruptedMinutes < 1440) {
+        const hours = Math.floor(interruptedMinutes / 60);
+        timeText = `${hours}小时前`;
+      } else {
+        const days = Math.floor(interruptedMinutes / 1440);
+        timeText = `${days}天前`;
+      }
+
+      // 显示未完成任务提示
+      document.getElementById('resumeCollectedCount').textContent = progress.collectedCount;
+      document.getElementById('resumeInterruptedTime').textContent = timeText;
+      document.getElementById('unfinishedTaskAlert').style.display = 'block';
+
+      // 隐藏其他提示
+      document.getElementById('firstTimeAlert').style.display = 'none';
+      document.getElementById('newItemsAlert').style.display = 'none';
+
+    } catch (error) {
+      console.error('检查未完成任务失败:', error);
+    }
+  }
+
+  // 继续采集
+  async handleResumeCollect() {
+    if (this.isCollecting) {
+      alert('正在采集中,请稍后...');
+      return;
+    }
+
+    this.isCollecting = true;
+    this.updateStatus('继续采集中...', '--');
+    document.getElementById('collectBtn').disabled = true;
+    document.getElementById('resumeCollectBtn').disabled = true;
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'resumeCollect'
+      });
+
+      if (response.success) {
+        this.collectedData = response.data;
+        await chrome.storage.local.set({ collectedData: response.data });
+        
+        this.updateStatus('继续采集完成', response.data.length);
+        document.getElementById('exportBtn').disabled = false;
+        
+        // 隐藏未完成任务提示
+        document.getElementById('unfinishedTaskAlert').style.display = 'none';
+        
+        alert(response.message || `继续采集完成，总计${response.data.length}条收藏`);
+      } else {
+        this.updateStatus('继续采集失败', '--');
+        alert('继续采集失败: ' + response.error);
+      }
+    } catch (error) {
+      this.updateStatus('继续采集失败', '--');
+      alert('继续采集失败: ' + error.message);
+    } finally {
+      this.isCollecting = false;
+      document.getElementById('collectBtn').disabled = false;
+      document.getElementById('resumeCollectBtn').disabled = false;
+    }
+  }
+
+  // 查看恢复数据
+  async handleViewResumeData() {
+    try {
+      const result = await chrome.storage.local.get('collectionProgress');
+      const progress = result.collectionProgress;
+
+      if (!progress || !progress.data) {
+        alert('没有找到已采集的数据');
+        return;
+      }
+
+      // 加载数据到当前状态
+      this.collectedData = progress.data;
+      await chrome.storage.local.set({ collectedData: progress.data });
+      
+      this.updateStatus('已加载数据', progress.data.length);
+      document.getElementById('exportBtn').disabled = false;
+      
+      alert(`已加载${progress.data.length}条已采集的数据，可以直接导出`);
+    } catch (error) {
+      alert('加载数据失败: ' + error.message);
+    }
+  }
+
+  // 清除进度(重新开始)
+  async handleClearProgress() {
+    if (!confirm('确定要清除未完成的采集任务吗？已采集的数据将被删除。')) {
+      return;
+    }
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'clearProgress'
+      });
+
+      // 隐藏未完成任务提示
+      document.getElementById('unfinishedTaskAlert').style.display = 'none';
+      
+      // 显示首次使用提示
+      document.getElementById('firstTimeAlert').style.display = 'block';
+      
+      alert('进度记录已清除，可以重新开始采集');
+    } catch (error) {
+      alert('清除进度失败: ' + error.message);
+    }
+  }
+}
+
+// 监听来自content script的进度消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'collectProgress') {
+    updateProgressDisplay(message);
+  } else if (message.action === 'heartbeat') {
+    console.log('收到心跳:', message);
+  }
+});
+
+// 更新进度显示
+function updateProgressDisplay(data) {
+  // 更新百分比
+  const percent = data.percent || 0;
+  const percentText = percent.toFixed(1) + '%';
+  
+  const progressPercent = document.getElementById('progressPercent');
+  if (progressPercent) {
+    progressPercent.textContent = percentText;
+  }
+  
+  // 更新进度条
+  const progressFill = document.getElementById('progressFill');
+  const progressBarText = document.getElementById('progressBarText');
+  if (progressFill) {
+    progressFill.style.width = percent + '%';
+  }
+  if (progressBarText) {
+    progressBarText.textContent = percentText;
+  }
+  
+  // 更新当前/总计
+  const progressCurrent = document.getElementById('progressCurrent');
+  const progressTotal = document.getElementById('progressTotal');
+  if (progressCurrent) {
+    progressCurrent.textContent = data.current || 0;
+  }
+  if (progressTotal) {
+    progressTotal.textContent = data.total || '--';
+  }
+  
+  // 更新采集速度
+  const collectSpeed = document.getElementById('collectSpeed');
+  if (collectSpeed && data.speed !== undefined) {
+    const speed = data.speed.toFixed(2);
+    collectSpeed.textContent = speed + ' 条/秒';
+  }
+  
+  // 更新已用时间
+  const elapsedTime = document.getElementById('elapsedTime');
+  if (elapsedTime && data.elapsedTime !== undefined) {
+    const minutes = Math.floor(data.elapsedTime / 60);
+    const seconds = Math.floor(data.elapsedTime % 60);
+    elapsedTime.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  
+  // 更新预计剩余时间
+  const remainingTime = document.getElementById('remainingTime');
+  if (remainingTime && data.remainingTime !== undefined) {
+    if (data.remainingTime > 0) {
+      const minutes = Math.floor(data.remainingTime / 60);
+      const seconds = Math.floor(data.remainingTime % 60);
+      if (minutes > 0) {
+        remainingTime.textContent = `${minutes}分${seconds}秒`;
+      } else {
+        remainingTime.textContent = `${seconds}秒`;
+      }
+    } else {
+      remainingTime.textContent = '--';
+    }
+  }
+  
+  // 更新进度文本
+  const progressText = document.getElementById('progressText');
+  if (progressText) {
+    progressText.textContent = `正在加载收藏夹... 已发现 ${data.current} 条收藏`;
+  }
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  new PopupController();
+});

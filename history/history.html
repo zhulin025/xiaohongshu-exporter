@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>导出历史记录</title>
+  <link rel="stylesheet" href="history.css">
+  <script src="../libs/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 导出历史记录</h1>
+      <button id="backBtn" class="btn btn-secondary">返回</button>
+    </header>
+
+    <!-- 统计概览 -->
+    <section class="stats-section">
+      <h2>统计概览</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-content">
+            <div class="stat-value" id="totalExports">0</div>
+            <div class="stat-label">总导出次数</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📚</div>
+          <div class="stat-content">
+            <div class="stat-value" id="totalItems">0</div>
+            <div class="stat-label">总收藏数</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🆕</div>
+          <div class="stat-content">
+            <div class="stat-value" id="lastExportTime">--</div>
+            <div class="stat-label">上次导出</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-content">
+            <div class="stat-value" id="avgPerExport">0</div>
+            <div class="stat-label">平均每次</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 图表展示 -->
+    <section class="charts-section">
+      <h2>数据可视化</h2>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>导出趋势</h3>
+          <canvas id="trendChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>导出格式分布</h3>
+          <canvas id="formatChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>导出目标分布</h3>
+          <canvas id="targetChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>每周导出统计</h3>
+          <canvas id="weeklyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 导出记录列表 -->
+    <section class="records-section">
+      <div class="section-header">
+        <h2>导出记录</h2>
+        <button id="clearHistoryBtn" class="btn btn-danger">清除历史</button>
+      </div>
+      <div id="recordsList" class="records-list">
+        <!-- 记录将通过JS动态生成 -->
+      </div>
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">暂无导出记录</div>
+        <div class="empty-hint">完成首次导出后,这里将显示历史记录</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="history.js"></script>
+</body>
+</html>
